@@ -7,18 +7,8 @@ import glob
 
 
 
-#mol = Molecule("pub.htmd.org/CXCL12-confAnalysis/1x14/structure.pdb")
-#mol.read('pub.htmd.org/CXCL12-confAnalysis/1x14/traj.xtc')
-#
-#
-#
-#
-##--- compute max distance ---
-#from htmd.molecule.util import maxDistance
-#D = maxDistance(mol, 'all')
-#maxdistance = D*1.1
-#maxdistance
-#
+
+
 
 #mol.wrap('protein')
 #mol.align('protein')
@@ -103,13 +93,30 @@ def maxDistance_calculator(infile):
     maxdist = D*1.1
     return maxdist
 
+def moving_and_filtering(mol,maxdistance):
+    first = True
+    for molecule in mol:
+        if first:
+            molecule.wrap('protein')
+            molecule.align('protein')
+            first = False
+        else:
+            molecule.wrap('protein')
+            molecule.align('all',refmol=mol[0])
+    print("Wrapped and aligned!")
+    for molecule in mol:
+        molecule.filter('name OH2 and x^2+y^2+z^2<'+str(round(maxdistance)**2))
+        #Still outpoints are saved, so we will need another filtering
+        molecule.moveBy([maxdistance, maxdistance, maxdistance])
+    print("Filtered and moved!")
+
+
 def grid_generator():
     pass
 
 def isosurface_generator():
     pass
 
-
 cmdline = cmdline_parser()
-maxdistance=maxDistance_calculator(cmdline.infile)
-print (maxdistance)
+maxdistance, mol_list = maxDistance_calculator(cmdline.infile)
+moving_and_filtering(mol_list, maxdistance)
