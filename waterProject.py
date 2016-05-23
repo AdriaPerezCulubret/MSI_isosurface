@@ -1,61 +1,10 @@
 from htmd import *
 from htmd.molecule.util import maxDistance
+from htmd.molecule.util import writeVoxels
 import itertools
 import argparse
 import glob
 
-
-
-
-
-
-
-#mol.wrap('protein')
-#mol.align('protein')
-#mol.filter('name OH2 and x^2+y^2+z^2<'+str(round(maxdistance)**2))
-#mol.moveBy([maxdistance, maxdistance, maxdistance])
-#
-#
-#cubedistance=int(round(maxdistance*2))
-#
-#
-#
-#grid = np.zeros([cubedistance,cubedistance,cubedistance])
-#
-#
-#for atom, frame in itertools.product(*map(range, (mol.coords.shape[0], mol.coords.shape[2]))):
-#    coord_list = [mol.coords[atom][0][frame], mol.coords[atom][1][frame], mol.coords[atom][2][frame]]
-#    if max(coord_list) > 112:
-#        continue
-#    if min(coord_list) < 0:
-#        continue
-#    else:
-#        grid[int(round(coord_list[0]))][int(round(coord_list[1]))][int(round(coord_list[2]))] += 1
-#print("Done!")
-#
-## --- making count matrix --- END
-## --- energy and writeVoxels
-#grid_div = grid/7066
-#grid_div.shape
-#
-#
-#
-#for x,y,z in itertools.product(*map(range, (grid_div.shape[0], grid_div.shape[1],grid_div.shape[2]))):
-#    prob = grid_div[x][y][z]
-#    if prob == 0:
-#        continue
-#    else:
-#        grid_div[x][y][z] = (np.log(grid_div[x][y][z])) * 0.001987191 * 298 * -1 
-#        
-#
-#
-#from htmd.molecule.util import writeVoxels
-#min_vec= np.array([0,0,0])
-#max_vec=np.array([112,112,112])
-#res_vec=np.array([1,1,1])
-#writeVoxels(grid_div,'isosurf.cube', min_vec, max_vec, res_vec )
-## --- energy and writeVoxels --- END
-#
 def cmdline_parser():
 
     parser = argparse.ArgumentParser(description="""This program gets a pdb and a cif structure and returns a pdb file with the protein placed 
@@ -90,7 +39,7 @@ def maxDistance_calculator(infile):
         counter +=1
         print(file + " Done!")
     maxdist = max(distance_list)
-    maxdist = D*1.1
+    maxdist = maxdist*1.1
     return maxdist
 
 def moving_and_filtering(mol,maxdistance):
@@ -111,12 +60,48 @@ def moving_and_filtering(mol,maxdistance):
     print("Filtered and moved!")
 
 
-def grid_generator():
-    pass
+def grid_generator(mol, cubedistance):
+    grid_list = []
+    divider = 0
+    for molecule in mol:
+        grid = np.zeros([cubedistance,cubedistance,cubedistance])
+        for atom, frame in itertools.product(*map(range, (molecule.coords.shape[0], molecule.coords.shape[2]))):
+            coord_list = [molecule.coords[atom][0][frame], molecule.coords[atom][1][frame], molecule.coords[atom][2][frame]]
+            if max(coord_list) > 112:
+                continue
+            if min(coord_list) < 0:
+                continue
+            else:
+                grid[int(round(coord_list[0]))][int(round(coord_list[1]))][int(round(coord_list[2]))] += 1
+        divider += molecule.coords.shape[0]
+        grid_list.append(grid)
+    final_grid = np.sum(grid_list, axis = 0)/divider
+    print("Grid calculated!")
+    return final_grid
 
-def isosurface_generator():
-    pass
+def isosurface_generator(grid, cubedistance,output):
+    for x,y,z in itertools.product(*map(range, (grid.shape[0], grid.shape[1],grid.shape[2]))):
+        prob = grid[x][y][z]
+        if prob == 0:
+            continue
+        else:
+            grid[x][y][z] = (np.log(grid[x][y][z])) * 0.001987191 * 298 * -1
+    
+    print("Energy calculated!")
+    min_vec= np.array([0,0,0])
+    max_vec=np.array([cubedistance,cubedistance,cubedistance])
+    res_vec=np.array([1,1,1])
+    writeVoxels(grid, output+'.cube', min_vec, max_vec, res_vec) 
+    print("Output file "+output+".cube generated on the current directory")     
 
-cmdline = cmdline_parser()
-maxdistance, mol_list = maxDistance_calculator(cmdline.infile)
-moving_and_filtering(mol_list, maxdistance)
+def main():
+    cmdline = cmdline_parser()
+    maxdistance, mol_list = maxDistance_calculator(cmdline.infile)
+    cubedistance=int(round(maxdistance*2))
+    moving_and_filtering(mol_list, cubedistance)
+    grid = grid_generator(mol_list, maxdistane)
+    isosurface_generator(grid,cubedistance,cmdline.outfile)
+    print ("Bye!")
+
+if __name__ == '__main__':
+    main()
