@@ -40,7 +40,7 @@ def maxDistance_calculator(infile):
         print(file + " Done!")
     maxdist = max(distance_list)
     maxdist = maxdist*1.1
-    return maxdist
+    return (maxdist, mol) 
 
 def moving_and_filtering(mol,maxdistance):
     first = True
